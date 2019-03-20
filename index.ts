@@ -8,10 +8,13 @@
 
 // source.subscribe(x => console.log(x));
 
-import { from, fromEvent, interval, of, Subject, throwError, empty } from 'rxjs';
-import { switchMap, takeUntil, catchError, mergeMap, concatMap, takeWhile, first, map, tap, switchMapTo } from 'rxjs/operators';
+import { EMPTY, merge, from, fromEvent, interval, of, Subject, throwError, empty } from 'rxjs';
+import { mapTo, switchMap, takeUntil, catchError, mergeMap, concatMap, takeWhile, first, map, tap, switchMapTo, } from 'rxjs/operators';
 
 import './style.css';
+
+//1
+
 // let myVar = null;
 
 // function cancelRequest() {
@@ -32,12 +35,7 @@ import './style.css';
 //   }, 2000);
 // }
 
-// var requestBtn = document.getElementById('makeRequestBtn');
-// requestBtn.addEventListener('click', makeRequest);
-
-// var cancelBtn = document.getElementById('cancelRequestBtn');
-// cancelBtn.addEventListener('click', cancelRequest);
-
+//2
 
 const requestBtn = document.getElementById('makeRequestBtn');
 const clickRequestObservable = fromEvent(requestBtn, 'click');
@@ -45,7 +43,7 @@ const clickRequestObservable = fromEvent(requestBtn, 'click');
 var cancelBtn = document.getElementById('cancelRequestBtn');
 const cancelRequestObservable = fromEvent(cancelBtn, 'click');
 
-let unsubscribe$;
+// let unsubscribe$;
 
 let promiseObservable = of(null).pipe(
   switchMap(
@@ -59,19 +57,43 @@ let promiseObservable = of(null).pipe(
   )
 );
 
-clickRequestObservable.pipe(
-  tap(() => unsubscribe$ = new Subject()),
-  switchMap(() => promiseObservable.pipe(takeUntil(unsubscribe$)))
-).subscribe(val => { console.log(val); unsubscribe$ = null; });
+// clickRequestObservable.pipe(
+//   tap(() => unsubscribe$ = new Subject()),
+//   switchMap(() => promiseObservable.pipe(takeUntil(unsubscribe$)))
+// ).subscribe(val => { console.log(val); unsubscribe$ = null; });
 
-cancelRequestObservable.subscribe(() => {
-  if (unsubscribe$) {
-    unsubscribe$.next();
-    unsubscribe$.complete();
-    unsubscribe$ = null;
-    console.log('Cancel successed!')
-  } else {
-    console.log('Cancel failed!')
-  }
-}
-)
+// cancelRequestObservable.subscribe(() => {
+//   if (unsubscribe$) {
+//     unsubscribe$.next();
+//     unsubscribe$.complete();
+//     unsubscribe$ = null;
+//     console.log('Cancel successed!')
+//   } else {
+//     console.log('Cancel failed!')
+//   }
+// }
+// )
+
+
+//3 
+
+let inProgress = false;
+merge(clickRequestObservable.pipe(mapTo('START')), cancelRequestObservable.pipe(mapTo('STOP')))
+ .pipe(
+   switchMap(val => {
+     if(val == 'START') {
+       inProgress = true;
+       return promiseObservable
+     } else {
+       if(inProgress) {
+         console.log('Cancel successed');
+       } else {
+         console.log('Cancel failed');
+       }
+       inProgress = false;
+       return EMPTY;
+     }
+   }),
+   tap(() => inProgress = false)
+ )
+ .subscribe(console.log)
